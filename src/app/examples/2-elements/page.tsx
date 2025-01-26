@@ -7,13 +7,12 @@ import { ExampleSection } from "@/components/ExampleSection";
 import { ElementDefinition, Stylesheet, Core } from "cytoscape";
 
 export default function ElementsExample() {
-  // 初始元素
   const [elements, setElements] = useState<ElementDefinition[]>([
-    // 节点
-    { data: { id: "a", label: "Node A" } },
-    { data: { id: "b", label: "Node B" } },
-    { data: { id: "c", label: "Node C" } },
-    // 边
+    // Nodes with positions
+    { data: { id: "a", label: "Node A" }, position: { x: 100, y: 100 } },
+    { data: { id: "b", label: "Node B" }, position: { x: 300, y: 100 } },
+    { data: { id: "c", label: "Node C" }, position: { x: 150, y: 200 } },
+    // Edge remains the same
     { data: { id: "ab", source: "a", target: "b", label: "Edge AB" } },
   ]);
 
@@ -53,33 +52,61 @@ export default function ElementsExample() {
     },
   ];
 
-  // 添加节点
+  // Simplify addNode
   const addNode = () => {
     const newId = `n${elements.length}`;
-    setElements([
-      ...elements,
-      { data: { id: newId, label: `Node ${newId.toUpperCase()}` } },
+    const lastElement = elements[elements.length - 1];
+    const lastPos = lastElement?.position || { x: 0, y: 0 };
+
+    const newPosition = {
+      x: lastPos.x + Math.random() * 200 - 100,
+      y: lastPos.y + Math.random() * 200 - 100,
+    };
+
+    setElements((prev) => [
+      ...prev,
+      {
+        data: { id: newId, label: `Node ${newId.toUpperCase()}` },
+        position: newPosition,
+      },
     ]);
   };
 
-  // 添加边
+  // Simplify handleNodeDragEnd - we can remove it entirely since positions
+  // are maintained by Cytoscape.js and stored in elements when needed
+
+  // Simplify selectedNodes mapping in addEdge
   const addEdge = () => {
     if (!cyRef.current) return;
 
-    // 获取选中的节点
     const selectedNodes = cyRef.current
       .nodes(":selected")
-      .map((node: any) => node.data());
+      .map((node: any) => ({
+        data: node.data(),
+        selectedTime: node.scratch("_selectedTime"),
+      }))
+      .sort((a: any, b: any) => a.selectedTime - b.selectedTime);
 
     if (selectedNodes.length !== 2) {
-      console.log(selectedNodes);
       alert("请先选择两个节点");
       return;
     }
 
-    const [source, target] = selectedNodes;
-    const newEdgeId = `e${elements.filter((ele) => ele.data.source).length}`;
+    // 使用选择顺序中的第一个节点作为源节点，第二个作为目标节点
+    const source = selectedNodes[0].data;
+    const target = selectedNodes[1].data;
 
+    // 检查是否已存在相同的边
+    const edgeExists = elements.some(
+      (ele) => ele.data.source === source.id && ele.data.target === target.id
+    );
+
+    if (edgeExists) {
+      alert("这两个节点之间已经存在边了");
+      return;
+    }
+
+    const newEdgeId = `e${elements.filter((ele) => ele.data.source).length}`;
     const newEdge: ElementDefinition = {
       data: {
         id: newEdgeId,
@@ -91,6 +118,12 @@ export default function ElementsExample() {
 
     setElements((prev) => [...prev, newEdge]);
   };
+
+  // Add this function to track node selection order
+  const handleNodeSelect = useCallback((event: any) => {
+    const node = event.target;
+    node.scratch("_selectedTime", Date.now());
+  }, []);
 
   // 删除最后一个元素
   const removeLastElement = () => {
@@ -127,10 +160,11 @@ export default function ElementsExample() {
         <CytoscapeGraph
           elements={elements}
           cytoStyle={style}
-          layout={{ name: "grid" }}
+          layout={{ name: "preset" }}
           divStyle={{ height: "400px", width: "100%" }}
           onCytoscapeInit={(cy) => {
             cyRef.current = cy;
+            cy.on("select", "node", handleNodeSelect);
           }}
         />
       </ExampleSection>

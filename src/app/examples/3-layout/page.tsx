@@ -6,17 +6,18 @@ import { ExampleLayout } from "@/components/ExampleLayout";
 import { ExampleSection } from "@/components/ExampleSection";
 import { ElementDefinition, Stylesheet, LayoutOptions, Core } from "cytoscape";
 import { registerLayouts } from "@/lib/cytoscape-layouts";
+import { gridLayoutConfig } from "./layoutConfig/grid";
+import { circleLayoutConfig } from "./layoutConfig/circle";
+import { concentricLayoutConfig } from "./layoutConfig/concentric";
+import { breadthfirstLayoutConfig } from "./layoutConfig/breadthfirst";
+import { dagreLayoutConfig } from "./layoutConfig/dagre";
+import { elkLayoutConfig } from "./layoutConfig/elk";
+import { coseLayoutConfig } from "./layoutConfig/cose";
+import { colaLayoutConfig } from "./layoutConfig/cola";
+import { fcoseLayoutConfig } from "./layoutConfig/fcose";
+import { coseBilkentLayoutConfig } from "./layoutConfig/coseBilkent";
+import { ciseLayoutConfig } from "./layoutConfig/cise";
 
-/**
- * 布局与视图控制示例
- *
- * 这个示例展示了 Cytoscape.js 的各种布局算法和视图控制功能：
- * 1. 离散布局：网格、环形、同心圆、层次布局
- * 2. 力导向布局：CoSE、F-CoSE、Cola、CoSE-Bilkent
- * 3. 层次布局：Dagre、ELK、CiSE
- * 4. 子图布局：对选中节点应用特定布局
- * 5. 视图控制：缩放、平移、居中等
- */
 export default function LayoutExample() {
   // 注册布局扩展
   useEffect(() => {
@@ -247,122 +248,20 @@ export default function LayoutExample() {
 
   // 布局配置
   const layouts = {
-    // 离散布局
-    grid: {
-      name: "grid",
-      rows: undefined,
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-    },
-    circle: {
-      name: "circle",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      radius: undefined,
-    },
-    concentric: {
-      name: "concentric",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      minNodeSpacing: 50,
-      concentric: (node: any) => node.degree(),
-      levelWidth: () => 1,
-    },
-    breadthfirst: {
-      name: "breadthfirst",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      directed: true,
-      spacingFactor: 1.5,
-    },
+    // 几何布局
+    grid: gridLayoutConfig,
+    circle: circleLayoutConfig,
+    concentric: concentricLayoutConfig,
+    // 层次布局
+    breadthfirst: breadthfirstLayoutConfig,
+    dagre: dagreLayoutConfig,
+    elk: elkLayoutConfig,
     // 力导向布局
-    cose: {
-      name: "cose",
-      animate: "end",
-      animationDuration: 500,
-      padding: 30,
-      nodeOverlap: 20,
-      componentSpacing: 40,
-      nodeRepulsion: 400000,
-      idealEdgeLength: 100,
-      edgeElasticity: 100,
-      nestingFactor: 5,
-      gravity: 80,
-      numIter: 1000,
-      initialTemp: 200,
-      coolingFactor: 0.95,
-      minTemp: 1.0,
-    },
-    cola: {
-      name: "cola",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      maxSimulationTime: 3000,
-      nodeSpacing: 30,
-      edgeLength: 100,
-      infinite: false,
-    },
-    fcose: {
-      name: "fcose",
-      quality: "proof",
-      animate: true,
-      animationDuration: 500,
-      randomize: true,
-      padding: 30,
-      nodeSeparation: 75,
-      idealEdgeLength: () => 50,
-      nodeRepulsion: () => 4500,
-    },
-    "cose-bilkent": {
-      name: "cose-bilkent",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      nodeDimensionsIncludeLabels: true,
-      idealEdgeLength: 50,
-      nodeRepulsion: 4500,
-      gravity: 0.25,
-      gravityRange: 3.8,
-    },
-    dagre: {
-      name: "dagre",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      rankDir: "TB",
-      nodeSep: 50,
-      rankSep: 50,
-      edgeSep: 10,
-    },
-    elk: {
-      name: "elk",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      algorithm: "stress",
-      nodeDimensionsIncludeLabels: true,
-      randomize: true,
-      "elk.spacing.nodeNode": 80,
-      "elk.layered.spacing.nodeNodeBetweenLayers": 80,
-    },
-    cise: {
-      name: "cise",
-      animate: true,
-      animationDuration: 500,
-      padding: 30,
-      clusters: [],
-      allowNodesInsideCircle: true,
-      maxRatioOfNodesInsideCircle: 0.1,
-      springCoeff: 0.45,
-      nodeRepulsion: 4500,
-      gravity: 0.25,
-      gravityRange: 3.8,
-    },
+    cose: coseLayoutConfig,
+    cola: colaLayoutConfig,
+    fcose: fcoseLayoutConfig,
+    "cose-bilkent": coseBilkentLayoutConfig,
+    cise: ciseLayoutConfig,
   };
 
   // 当前布局配置
@@ -373,42 +272,46 @@ export default function LayoutExample() {
     setLayout(layouts[layoutName]);
   }, []);
 
-  // 对选中节点应用布局
+  // 更新子图布局函数
   const applyLayoutToSelected = useCallback((name: keyof typeof layouts) => {
     if (!cyRef.current) return;
 
     const selectedNodes = cyRef.current.nodes(":selected");
     if (selectedNodes.length === 0) {
-      alert("请先选择节点");
+      alert("请先选择一个或多个节点");
       return;
     }
 
-    // 获取选中节点的中心点作为参考
-    const bb = selectedNodes.boundingBox();
+    // 获取选中节点及其一阶邻居
+    const neighborhood = selectedNodes.neighborhood().add(selectedNodes);
+
+    // 计算选中区域的边界框
+    const bb = neighborhood.boundingBox();
     const center = {
       x: (bb.x1 + bb.x2) / 2,
       y: (bb.y1 + bb.y2) / 2,
     };
 
-    // 获取选中节点及其邻居
-    const neighborhood = selectedNodes.neighborhood().add(selectedNodes);
+    // 计算合适的布局区域大小
+    const width = Math.max(bb.w, 200);
+    const height = Math.max(bb.h, 200);
 
-    // 创建布局配置，继承全局配置
+    // 创建布局配置
     const layoutConfig = {
       ...layouts[name],
-      fit: false, // 不自动适配视图
+      fit: false,
       animate: true,
       animationDuration: 500,
+      // 将布局限制在选中区域附近
       boundingBox: {
-        // 将布局限制在选中节点的区域内
-        x1: center.x - 100,
-        y1: center.y - 100,
-        x2: center.x + 100,
-        y2: center.y + 100,
+        x1: center.x - width / 2,
+        y1: center.y - height / 2,
+        x2: center.x + width / 2,
+        y2: center.y + height / 2,
       },
     };
 
-    // 运行布局前记录其他节点的位置
+    // 记录其他节点的位置
     const otherNodes = cyRef.current.nodes().not(neighborhood);
     const positions: Record<string, { x: number; y: number }> = {};
     otherNodes.forEach((node) => {
@@ -502,9 +405,9 @@ export default function LayoutExample() {
       <ExampleSection title="布局控制">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div>
-            <h3 className="font-medium mb-2">离散布局 (Discrete)</h3>
+            <h3 className="font-medium mb-2">几何布局 (Geometric)</h3>
             <div className="text-sm text-gray-600 mb-2">
-              快速且确定性的几何布局，节点位置一次性确定
+              将节点组织成基本的几何形状，适合展示简单、规则的结构
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -525,54 +428,21 @@ export default function LayoutExample() {
               >
                 Concentric
               </button>
-              <button
-                onClick={() => changeLayout("breadthfirst")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                Breadthfirst
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-medium mb-2">力导向布局 (Force-directed)</h3>
-            <div className="text-sm text-gray-600 mb-2">
-              通过物理模拟迭代计算节点位置，适合展示复杂关系
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => changeLayout("fcose")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                fCoSE
-              </button>
-              <button
-                onClick={() => changeLayout("cose-bilkent")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                CoSE-Bilkent
-              </button>
-              <button
-                onClick={() => changeLayout("cola")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                Cola
-              </button>
-              <button
-                onClick={() => changeLayout("cose")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                CoSE
-              </button>
             </div>
           </div>
 
           <div>
             <h3 className="font-medium mb-2">层次布局 (Hierarchical)</h3>
             <div className="text-sm text-gray-600 mb-2">
-              专门用于展示具有层次结构的有向图
+              专门用于展示树形结构和有向无环图(DAG)
             </div>
             <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => changeLayout("breadthfirst")}
+                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                Breadthfirst
+              </button>
               <button
                 onClick={() => changeLayout("dagre")}
                 className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
@@ -585,45 +455,71 @@ export default function LayoutExample() {
               >
                 ELK
               </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-medium mb-2">力导向布局 (Force-directed)</h3>
+            <div className="text-sm text-gray-600 mb-2">
+              通过物理模拟优化节点位置，突出图的拓扑结构
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => changeLayout("fcose")}
+                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                F-CoSE
+              </button>
+              <button
+                onClick={() => changeLayout("cola")}
+                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                Cola
+              </button>
               <button
                 onClick={() => changeLayout("cise")}
                 className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
               >
                 CiSE
               </button>
+              <button
+                onClick={() => changeLayout("cose")}
+                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                CoSE
+              </button>
             </div>
           </div>
 
           <div>
-            <h3 className="font-medium mb-2">子图布局</h3>
+            <h3 className="font-medium mb-2">子图布局 (Subgraph)</h3>
             <div className="text-sm text-gray-600 mb-2">
-              对选中的节点及其邻居应用特定布局，保持其他节点位置不变
+              选择节点后，可以对选中的节点及其邻居应用不同的布局算法
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => applyLayoutToSelected("concentric")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                同心圆布局
-              </button>
-              <button
-                onClick={() => applyLayoutToSelected("cose")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                CoSE布局
-              </button>
-              <button
-                onClick={() => applyLayoutToSelected("fcose")}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                F-CoSE布局
-              </button>
-              <button
-                onClick={resetLayout}
-                className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                重置布局
-              </button>
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => applyLayoutToSelected("circle")}
+                  className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  环形布局
+                </button>
+                <button
+                  onClick={() => applyLayoutToSelected("grid")}
+                  className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  网格布局
+                </button>
+                <button
+                  onClick={() => applyLayoutToSelected("fcose")}
+                  className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                >
+                  力导向布局
+                </button>
+              </div>
+              <div className="text-xs text-gray-500">
+                提示：先点击选择一个或多个节点，然后点击上方按钮应用布局
+              </div>
             </div>
           </div>
 
@@ -680,26 +576,23 @@ export default function LayoutExample() {
 
       <ExampleSection title="功能说明">
         <div className="prose max-w-none">
-          <h3 className="text-lg font-medium mb-2">布局控制</h3>
+          <h3 className="text-lg font-medium mb-2">布局类型</h3>
           <ul className="list-disc list-inside space-y-2 mb-4">
             <li>
-              <strong>离散布局：</strong>
-              包括网格、环形、同心圆和层次布局，适用于展示图的整体结构
-            </li>
-            <li>
-              <strong>力导向布局：</strong>
-              通过物理模拟实现节点的自动分布，适用于复杂关系网络
+              <strong>几何布局：</strong>
+              将节点组织成网格、圆形等基本几何形状，计算快速且结果可预测，适合展示简单的图结构
             </li>
             <li>
               <strong>层次布局：</strong>
-              专门用于展示具有层次结构的有向图，如组织架构、依赖关系等
+              专门用于展示树形结构和有向无环图(DAG)，能清晰地表现层级关系，适合展示组织架构、依赖关系等
+            </li>
+            <li>
+              <strong>力导向布局：</strong>
+              通过模拟物理力的作用优化节点位置，能自动发现和展示图的拓扑结构，适合展示复杂的关系网络
             </li>
             <li>
               <strong>子图布局：</strong>
-              可以对选中的节点及其邻居单独应用布局，而不影响其他节点
-            </li>
-            <li>
-              示例图包含三个不同结构的簇：环形结构（绿色）、星形结构（蓝色）和层次结构（黄色）
+              可以对选中的节点及其邻居单独应用布局，用于局部结构的优化展示
             </li>
           </ul>
 
