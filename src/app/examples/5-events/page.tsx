@@ -6,6 +6,62 @@ import { ExampleLayout } from "@/components/ExampleLayout";
 import { ExampleSection } from "@/components/ExampleSection";
 import { ElementDefinition, Stylesheet, Core } from "cytoscape";
 
+// 静态常量定义，防止组件重渲染时引用改变导致无限循环
+const INITIAL_ELEMENTS: ElementDefinition[] = [
+  { data: { id: "a", label: "节点 A" } },
+  { data: { id: "b", label: "节点 B" } },
+  { data: { id: "c", label: "节点 C" } },
+  { data: { id: "d", label: "节点 D" } },
+  { data: { id: "e", label: "节点 E" } },
+  { data: { id: "ab", source: "a", target: "b", label: "边 AB" } },
+  { data: { id: "bc", source: "b", target: "c", label: "边 BC" } },
+  { data: { id: "cd", source: "c", target: "d", label: "边 CD" } },
+  { data: { id: "de", source: "d", target: "e", label: "边 DE" } },
+  { data: { id: "ea", source: "e", target: "a", label: "边 EA" } },
+];
+
+const GRAPH_STYLE: Stylesheet[] = [
+  {
+    selector: "node",
+    style: {
+      backgroundColor: "#666",
+      label: "data(label)",
+      fontSize: "12px",
+      textValign: "center",
+      textHalign: "center",
+    } as any,
+  },
+  {
+    selector: "edge",
+    style: {
+      width: 2,
+      lineColor: "#999",
+      targetArrowColor: "#999",
+      targetArrowShape: "triangle",
+      curveStyle: "bezier",
+      label: "data(label)",
+    } as any,
+  },
+  {
+    selector: ":selected",
+    style: {
+      backgroundColor: "#d32f2f",
+      lineColor: "#d32f2f",
+      targetArrowColor: "#d32f2f",
+    } as any,
+  },
+  {
+    selector: ":active",
+    style: {
+      overlayColor: "#000",
+      overlayPadding: 10,
+      overlayOpacity: 0.25,
+    } as any,
+  },
+];
+
+const GRAPH_LAYOUT = { name: "circle", padding: 50 };
+
 /**
  * 交互与事件处理示例
  *
@@ -238,62 +294,7 @@ export default function EventsExample() {
     }
   }, [handleLog]);
 
-  // 示例数据
-  const elements: ElementDefinition[] = [
-    // 节点
-    { data: { id: "a", label: "节点 A" } },
-    { data: { id: "b", label: "节点 B" } },
-    { data: { id: "c", label: "节点 C" } },
-    { data: { id: "d", label: "节点 D" } },
-    { data: { id: "e", label: "节点 E" } },
-    // 边
-    { data: { id: "ab", source: "a", target: "b", label: "边 AB" } },
-    { data: { id: "bc", source: "b", target: "c", label: "边 BC" } },
-    { data: { id: "cd", source: "c", target: "d", label: "边 CD" } },
-    { data: { id: "de", source: "d", target: "e", label: "边 DE" } },
-    { data: { id: "ea", source: "e", target: "a", label: "边 EA" } },
-  ];
-
-  // 样式定义
-  const style: Stylesheet[] = [
-    {
-      selector: "node",
-      style: {
-        backgroundColor: "#666",
-        label: "data(label)",
-        fontSize: "12px",
-        textValign: "center",
-        textHalign: "center",
-      } as any,
-    },
-    {
-      selector: "edge",
-      style: {
-        width: 2,
-        lineColor: "#999",
-        targetArrowColor: "#999",
-        targetArrowShape: "triangle",
-        curveStyle: "bezier",
-        label: "data(label)",
-      } as any,
-    },
-    {
-      selector: ":selected",
-      style: {
-        backgroundColor: "#d32f2f",
-        lineColor: "#d32f2f",
-        targetArrowColor: "#d32f2f",
-      } as any,
-    },
-    {
-      selector: ":active",
-      style: {
-        overlayColor: "#000",
-        overlayPadding: 10,
-        overlayOpacity: 0.25,
-      } as any,
-    },
-  ];
+  // 静态常量已移动至组件外部以避免重渲染时引用发生变化
 
   return (
     <ExampleLayout
@@ -354,9 +355,9 @@ export default function EventsExample() {
 
       <ExampleSection>
         <CytoscapeGraph
-          elements={elements}
-          cytoStyle={style}
-          layout={{ name: "circle", padding: 50 }}
+          elements={INITIAL_ELEMENTS}
+          cytoStyle={GRAPH_STYLE}
+          layout={GRAPH_LAYOUT}
           divStyle={{ height: "500px", width: "100%" }}
           onCytoscapeInit={handleCytoscapeInit}
         />
